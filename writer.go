@@ -584,6 +584,11 @@ func (w *writer) run() {
 	for !done {
 		var mustFlush bool
 
+		var timerChannel <-chan time.Time
+		if batchFlushTimer != nil {
+			timerChannel = batchFlushTimer.C
+		}
+
 		select {
 		case wm, ok := <-w.msgs:
 			if !ok {
@@ -594,7 +599,7 @@ func (w *writer) run() {
 				mustFlush = len(batch) >= w.batchSize
 				batchFlushTimer = time.NewTimer(w.batchTimeout)
 			}
-		case _ = <-batchFlushTimer.C:
+		case _ = <-timerChannel:
 			batchFlushTimer = nil
 			mustFlush = true
 		}
