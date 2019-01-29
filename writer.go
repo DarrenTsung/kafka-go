@@ -597,7 +597,9 @@ func (w *writer) run() {
 				batch = append(batch, wm.msg)
 				resch = append(resch, wm.res)
 				mustFlush = len(batch) >= w.batchSize
-				batchFlushTimer = time.NewTimer(w.batchTimeout)
+				if batchFlushTimer == nil {
+					batchFlushTimer = time.NewTimer(w.batchTimeout)
+				}
 			}
 		case _ = <-timerChannel:
 			batchFlushTimer = nil
