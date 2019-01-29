@@ -568,14 +568,12 @@ func (w *writer) withErrorLogger(do func(*log.Logger)) {
 func (w *writer) run() {
 	defer w.join.Done()
 
-	ticker := time.NewTicker(w.batchTimeout / 10)
-	defer ticker.Stop()
+	var batchFlushTimer *time.Timer
 
 	var conn *Conn
 	var done bool
 	var batch = make([]Message, 0, w.batchSize)
 	var resch = make([](chan<- error), 0, w.batchSize)
-	var lastFlushAt = time.Now()
 
 	defer func() {
 		if conn != nil {
@@ -594,15 +592,14 @@ func (w *writer) run() {
 				batch = append(batch, wm.msg)
 				resch = append(resch, wm.res)
 				mustFlush = len(batch) >= w.batchSize
+				batchFlushTimer = time.NewTimer(w.batchTimeout)
 			}
-
-		case now := <-ticker.C:
-			mustFlush = now.Sub(lastFlushAt) > w.batchTimeout
+		case _ = <-batchFlushTimer.C:
+			batchFlushTimer = nil
+			mustFlush = true
 		}
 
 		if mustFlush {
-			lastFlushAt = time.Now()
-
 			if len(batch) == 0 {
 				continue
 			}
